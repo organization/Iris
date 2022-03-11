@@ -215,7 +215,7 @@ public class TriforcePatcher {
 		if (type == ShaderType.VERTEX) {
 			if (inputs.isNewLines()) {
 				transformations.injectLine(Transformations.InjectionPoint.BEFORE_CODE, "vec3 iris_vertex_offset = vec3(0.0);");
-				transformations.injectLine(Transformations.InjectionPoint.DEFINES, "#define gl_Vertex vec4(iris_Position + iris_vertex_offset, 1.0)");
+				transformations.injectLine(Transformations.InjectionPoint.DEFINES, "#define iris_Vertex vec4(iris_Position + iris_vertex_offset, 1.0)");
 
 				if (transformations.contains("irisMain")) {
 					throw new IllegalStateException("Shader already contains \"irisMain\"???");
@@ -262,11 +262,11 @@ public class TriforcePatcher {
 								"    iris_widen_lines(linePosStart, linePosEnd);\n" +
 								"}");
 			} else {
-				transformations.injectLine(Transformations.InjectionPoint.DEFINES, "#define gl_Vertex vec4(iris_Position, 1.0)");
+				transformations.injectLine(Transformations.InjectionPoint.DEFINES, "#define iris_Vertex vec4(iris_Position, 1.0)");
 			}
 
 			transformations.injectLine(Transformations.InjectionPoint.BEFORE_CODE, "in vec3 iris_Position;");
-			transformations.injectLine(Transformations.InjectionPoint.BEFORE_CODE, "vec4 ftransform() { return gl_ModelViewProjectionMatrix * gl_Vertex; }");
+			transformations.injectLine(Transformations.InjectionPoint.BEFORE_CODE, "vec4 ftransform() { return gl_ModelViewProjectionMatrix * iris_Vertex; }");
 		}
 
 
@@ -343,7 +343,7 @@ public class TriforcePatcher {
 			transformations.injectLine(Transformations.InjectionPoint.DEFINES, SodiumTerrainPipeline.parseSodiumImport("#import <sodium:include/chunk_parameters.glsl>"));
 			transformations.injectLine(Transformations.InjectionPoint.DEFINES, SodiumTerrainPipeline.parseSodiumImport("#import <sodium:include/chunk_matrices.glsl>"));
 
-			transformations.define("gl_Vertex", "getVertexPosition()");
+			transformations.define("iris_Vertex", "getVertexPosition()");
 
 			if (transformations.contains("irisMain")) {
 				throw new IllegalStateException("Shader already contains \"irisMain\"???");
@@ -359,7 +359,7 @@ public class TriforcePatcher {
 					"}");
 
 			transformations.injectLine(Transformations.InjectionPoint.BEFORE_CODE, "vec4 getVertexPosition() { return vec4(_draw_translation + _vert_position, 1.0); }");
-			transformations.injectLine(Transformations.InjectionPoint.BEFORE_CODE, "vec4 ftransform() { return gl_ModelViewProjectionMatrix * gl_Vertex; }");
+			transformations.injectLine(Transformations.InjectionPoint.BEFORE_CODE, "vec4 ftransform() { return gl_ModelViewProjectionMatrix * iris_Vertex; }");
 		} else {
 			transformations.injectLine(Transformations.InjectionPoint.BEFORE_CODE, "uniform mat4 u_ModelViewMatrix;");
 			transformations.injectLine(Transformations.InjectionPoint.BEFORE_CODE, "uniform mat4 u_ProjectionMatrix;");
@@ -415,9 +415,9 @@ public class TriforcePatcher {
 		transformations.injectLine(Transformations.InjectionPoint.DEFINES, "#define gl_ModelViewProjectionMatrix (gl_ProjectionMatrix * gl_ModelViewMatrix)");
 
 		if (type == ShaderType.VERTEX) {
-			transformations.injectLine(Transformations.InjectionPoint.DEFINES, "#define gl_Vertex vec4(Position, 1.0)");
+			transformations.injectLine(Transformations.InjectionPoint.DEFINES, "#define iris_Vertex vec4(Position, 1.0)");
 			transformations.injectLine(Transformations.InjectionPoint.BEFORE_CODE, "in vec3 Position;");
-			transformations.injectLine(Transformations.InjectionPoint.BEFORE_CODE, "vec4 ftransform() { return gl_ModelViewProjectionMatrix * gl_Vertex; }");
+			transformations.injectLine(Transformations.InjectionPoint.BEFORE_CODE, "vec4 ftransform() { return gl_ModelViewProjectionMatrix * iris_Vertex; }");
 		}
 
 		return transformations.toString();
