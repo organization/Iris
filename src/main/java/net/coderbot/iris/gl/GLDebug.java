@@ -23,7 +23,7 @@ import java.util.function.Consumer;
 public final class GLDebug {
 	/**
 	 * Sets up debug callbacks
-	 * @return 0 for failure, 1 for success, 2 for "possible issue".
+	 * @return 0 for failure, 1 for success, 2 for restart required.
 	 */
 	public static int setupDebugMessageCallback() {
 		return setupDebugMessageCallback(APIUtil.DEBUG_STREAM);
@@ -107,6 +107,7 @@ public final class GLDebug {
 			if (caps.OpenGL30 && (GL43C.glGetInteger(33310) & 2) == 0) {
 				Iris.logger.warn("[GL] Warning: A non-debug context may not produce any debug output.");
 				GL43C.glEnable(37600);
+				return 2;
 			}
 			return 1;
 		} else if (caps.GL_ARB_debug_output) {
@@ -148,7 +149,6 @@ public final class GLDebug {
 		} else if (caps.GL_KHR_debug) {
 			KHRDebug.glDebugMessageCallback(null, 0L);
 			if (caps.OpenGL30 && (GL43C.glGetInteger(33310) & 2) == 0) {
-				Iris.logger.warn("[GL] Warning: A non-debug context may not produce any debug output.");
 				GL43C.glDisable(37600);
 			}
 			return 1;
