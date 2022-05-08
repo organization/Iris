@@ -74,7 +74,7 @@ public class MixinGameRenderer {
 		if (isSky()) {
 			override(ShaderKey.SKY_BASIC, cir);
 		} else if (ShadowRenderer.ACTIVE) {
-			// TODO: shadowBasic
+			override(ShaderKey.SHADOW_BASIC, cir);
 		} else if (isRenderingWorld()) {
 			override(ShaderKey.BASIC, cir);
 		}
@@ -85,31 +85,29 @@ public class MixinGameRenderer {
 		if (isSky()) {
 			override(ShaderKey.SKY_BASIC_COLOR, cir);
 		} else if (ShadowRenderer.ACTIVE) {
-			// TODO: shadowBasicColor
+			override(ShaderKey.SHADOW_BASIC_COLOR, cir);
 		} else if (isRenderingWorld()) {
 			override(ShaderKey.BASIC_COLOR, cir);
 		}
 	}
-
-	// TODO: getPositionColorTexShader
 
 	@Inject(method = "getPositionTexShader", at = @At("HEAD"), cancellable = true)
 	private static void iris$overridePositionTexShader(CallbackInfoReturnable<ShaderInstance> cir) {
 		if (isSky()) {
 			override(ShaderKey.SKY_TEXTURED, cir);
 		} else if (ShadowRenderer.ACTIVE) {
-			// TODO: shadowTextured
+			override(ShaderKey.SHADOW_TEX, cir);
 		} else if (isRenderingWorld()) {
 			override(ShaderKey.TEXTURED, cir);
 		}
 	}
 
-	@Inject(method = "getPositionTexColorShader", at = @At("HEAD"), cancellable = true)
+	@Inject(method = {"getPositionTexColorShader", "getPositionColorTexShader"}, at = @At("HEAD"), cancellable = true)
 	private static void iris$overridePositionTexColorShader(CallbackInfoReturnable<ShaderInstance> cir) {
 		if (isSky()) {
 			override(ShaderKey.SKY_TEXTURED_COLOR, cir);
 		} else if (ShadowRenderer.ACTIVE) {
-			// TODO: shadowTexturedColor
+			override(ShaderKey.SHADOW_TEX_COLOR, cir);
 		} else if (isRenderingWorld()) {
 			override(ShaderKey.TEXTURED_COLOR, cir);
 		}
@@ -123,9 +121,9 @@ public class MixinGameRenderer {
 			// TODO: Wrong program
 			override(ShaderKey.SHADOW_ENTITIES_CUTOUT, cir);
 		} else if (HandRenderer.INSTANCE.isActive()) {
-			override(HandRenderer.INSTANCE.isRenderingSolid() ? ShaderKey.HAND_CUTOUT_DIFFUSE : ShaderKey.HAND_WATER_DIFFUSE, cir);
+			override(HandRenderer.INSTANCE.isRenderingSolid() ? ShaderKey.HAND_CUTOUT_BRIGHT : ShaderKey.HAND_WATER_BRIGHT, cir);
 		} else if (GbufferPrograms.isRenderingBlockEntities()) {
-			override(ShaderKey.BLOCK_ENTITY_DIFFUSE, cir);
+			override(ShaderKey.BLOCK_ENTITY_BRIGHT, cir);
 		} else if (isRenderingWorld()) {
 			override(ShaderKey.ENTITIES_SOLID_BRIGHT, cir);
 		}
@@ -137,18 +135,22 @@ public class MixinGameRenderer {
 	private static void iris$overrideParticleShader(CallbackInfoReturnable<ShaderInstance> cir) {
 		if(isPhase(WorldRenderingPhase.RAIN_SNOW)) {
 			override(ShaderKey.WEATHER, cir);
-		} else if (isRenderingWorld() && !ShadowRenderer.ACTIVE) {
+		} else if (ShadowRenderer.ACTIVE) {
+			override(ShaderKey.SHADOW_PARTICLES, cir);
+		} else if (isRenderingWorld()) {
 			override(ShaderKey.PARTICLES, cir);
 		}
-		// TODO: shadows
 	}
 
 	// TODO: getPositionColorLightmapShader, getPositionColorTexLightmapShader
 
 	@Inject(method = "getPositionTexColorNormalShader", at = @At("HEAD"), cancellable = true)
 	private static void iris$overridePositionTexColorNormalShader(CallbackInfoReturnable<ShaderInstance> cir) {
-		override(ShaderKey.CLOUDS, cir);
-		// TODO: shadows
+		if (ShadowRenderer.ACTIVE) {
+			override(ShaderKey.SHADOW_CLOUDS, cir);
+		} else if (isRenderingWorld()) {
+			override(ShaderKey.CLOUDS, cir);
+		}
 	}
 
 	// TODO: getPositionTexLightmapColorShader
@@ -253,7 +255,7 @@ public class MixinGameRenderer {
 			"getRendertypeArmorEntityGlintShader"
 	}, at = @At("HEAD"), cancellable = true)
 	private static void iris$overrideGlintShader(CallbackInfoReturnable<ShaderInstance> cir) {
-		if(isRenderingWorld()) {
+		if (isRenderingWorld()) {
 			override(ShaderKey.GLINT, cir);
 		}
 	}
@@ -296,7 +298,7 @@ public class MixinGameRenderer {
 	private static void iris$overrideBeaconBeamShader(CallbackInfoReturnable<ShaderInstance> cir) {
 		if (ShadowRenderer.ACTIVE) {
 			override(ShaderKey.SHADOW_BEACON_BEAM, cir);
-		} else {
+		} else if (isRenderingWorld()) {
 			override(ShaderKey.BEACON, cir);
 		}
 	}
@@ -325,9 +327,7 @@ public class MixinGameRenderer {
 	}, at = @At("HEAD"), cancellable = true)
 	private static void iris$overrideLeashShader(CallbackInfoReturnable<ShaderInstance> cir) {
 		if (ShadowRenderer.ACTIVE) {
-			// TODO: Wrong program
-			// override(CoreWorldRenderingPipeline::getShadowTerrainCutout, cir);
-			return;
+			override(ShaderKey.SHADOW_LEASH, cir);
 		} else if (isRenderingWorld()) {
 			override(ShaderKey.LEASH, cir);
 		}
@@ -338,9 +338,7 @@ public class MixinGameRenderer {
 	}, at = @At("HEAD"), cancellable = true)
 	private static void iris$overrideLightningShader(CallbackInfoReturnable<ShaderInstance> cir) {
 		if (ShadowRenderer.ACTIVE) {
-			// TODO: Wrong program
-			// override(CoreWorldRenderingPipeline::getShadowTerrainCutout, cir);
-			return;
+			override(ShaderKey.SHADOW_LIGHTNING, cir);
 		} else if (isRenderingWorld()) {
 			override(ShaderKey.LIGHTNING, cir);
 		}
@@ -360,7 +358,9 @@ public class MixinGameRenderer {
 			"getRendertypeTextSeeThroughShader"
 	}, at = @At("HEAD"), cancellable = true)
 	private static void iris$overrideTextShader(CallbackInfoReturnable<ShaderInstance> cir) {
-		if (isRenderingWorld() && !ShadowRenderer.ACTIVE) {
+		if (ShadowRenderer.ACTIVE) {
+			override(ShaderKey.SHADOW_TEXT, cir);
+		} else if (isRenderingWorld()) {
 			override(ShaderKey.TEXT, cir);
 		}
 	}
@@ -370,20 +370,15 @@ public class MixinGameRenderer {
 			"getRendertypeTextIntensitySeeThroughShader"
 	}, at = @At("HEAD"), cancellable = true)
 	private static void iris$overrideTextIntensityShader(CallbackInfoReturnable<ShaderInstance> cir) {
-		if (isRenderingWorld() && !ShadowRenderer.ACTIVE) {
+		if (ShadowRenderer.ACTIVE) {
+			override(ShaderKey.SHADOW_TEXT_INTENSITY, cir);
+		} else if (isRenderingWorld()) {
 			override(ShaderKey.TEXT_INTENSITY, cir);
 		}
 	}
 
-	@Inject(method = {
-			"getRendertypeEndGatewayShader",
-			"getRendertypeEndPortalShader"
-	}, at = @At("HEAD"), cancellable = true)
-	private static void iris$overrideEndPortalShader(CallbackInfoReturnable<ShaderInstance> cir) {
-		if(!ShadowRenderer.ACTIVE) {
-			override(ShaderKey.BLOCK_ENTITY, cir);
-		}
-	}
+	// ignored: getRendertypeEndGatewayShader (we replace the end portal rendering for shaders)
+	// ignored: getRendertypeEndPortalShader (we replace the end portal rendering for shaders)
 
 	@Inject(method = {
 			"getRendertypeLinesShader"
@@ -401,6 +396,7 @@ public class MixinGameRenderer {
 
 		if (pipeline != null) {
 			switch (pipeline.getPhase()) {
+				case CUSTOM_SKY:
 				case SKY:
 				case SUNSET:
 				case SUN:

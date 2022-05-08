@@ -1,11 +1,5 @@
 package net.coderbot.iris.pipeline;
 
-import java.util.Objects;
-import java.util.Optional;
-import java.util.function.IntFunction;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.google.common.collect.ImmutableSet;
 import me.jellysquid.mods.sodium.client.gl.shader.ShaderLoader;
 import me.jellysquid.mods.sodium.client.model.vertex.type.ChunkVertexType;
@@ -26,6 +20,12 @@ import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.uniforms.CommonUniforms;
 import net.coderbot.iris.uniforms.builtin.BuiltinReplacementUniforms;
 import net.minecraft.resources.ResourceLocation;
+
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.IntFunction;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class SodiumTerrainPipeline {
 	String terrainVertex;
@@ -234,10 +234,14 @@ public class SodiumTerrainPipeline {
 	public ProgramUniforms initUniforms(int programId) {
 		ProgramUniforms.Builder uniforms = ProgramUniforms.builder("<sodium shaders>", programId);
 
-		CommonUniforms.addCommonUniforms(uniforms, programSet.getPack().getIdMap(), programSet.getPackDirectives(), parent.getFrameUpdateNotifier(), FogMode.ENABLED);
+		CommonUniforms.addCommonUniforms(uniforms, programSet.getPack().getIdMap(), programSet.getPackDirectives(), parent.getFrameUpdateNotifier(), FogMode.PER_VERTEX);
 		BuiltinReplacementUniforms.addBuiltinReplacementUniforms(uniforms);
 
 		return uniforms.buildUniforms();
+	}
+
+	public boolean hasShadowPass() {
+		return createShadowSamplers != null;
 	}
 
 	public ProgramSamplers initTerrainSamplers(int programId) {

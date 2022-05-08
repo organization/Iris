@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 public class IrisLogging {
 	public static boolean ENABLE_SPAM = false; // FabricLoader.getInstance().isDevelopmentEnvironment();
 
-	private Logger logger;
+	private final Logger logger;
 
 	public IrisLogging(String loggerName) {
 		this.logger = LoggerFactory.getLogger(loggerName);
@@ -42,11 +42,11 @@ public class IrisLogging {
 	}
 
 	public void info(String info) {
-		this.logger.warn(info);
+		this.logger.info(info);
 	}
 
 	public void info(String info, Object... o) {
-		this.logger.warn(info, o);
+		this.logger.info(info, o);
 	}
 
 	public void debug(String debug) {

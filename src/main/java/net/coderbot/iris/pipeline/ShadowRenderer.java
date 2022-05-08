@@ -1,6 +1,7 @@
 package net.coderbot.iris.pipeline;
 
 import com.google.common.collect.ImmutableList;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Matrix4f;
@@ -8,10 +9,12 @@ import com.mojang.math.Vector3f;
 import net.coderbot.batchedentityrendering.impl.BatchingDebugMessageHelper;
 import net.coderbot.batchedentityrendering.impl.DrawCallTrackingRenderBuffers;
 import net.coderbot.batchedentityrendering.impl.RenderBuffersExt;
+import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.blending.AlphaTestOverride;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
+import net.coderbot.iris.gl.texture.DepthCopyStrategy;
 import net.coderbot.iris.gl.texture.InternalTextureFormat;
 import net.coderbot.iris.gui.option.IrisVideoSettings;
 import net.coderbot.iris.layer.GbufferProgram;
@@ -78,7 +81,6 @@ public class ShadowRenderer implements ShadowMapRenderer {
 	private final ShadowRenderTargets targets;
 	private final OptionalBoolean packCullingState;
 	public boolean packHasVoxelization;
-	private final boolean packHasIndirectSunBounceGi;
 	private final boolean shouldRenderTerrain;
 	private final boolean shouldRenderTranslucent;
 	private final boolean shouldRenderEntities;
@@ -143,22 +145,6 @@ public class ShadowRenderer implements ShadowMapRenderer {
 		} else {
 			this.packHasVoxelization = false;
 			this.packCullingState = OptionalBoolean.DEFAULT;
-		}
-
-		ProgramSource[] composite = set.getComposite();
-
-		if (composite.length > 0) {
-			String fsh = composite[0].getFragmentSource().orElse("");
-
-			// Detect the sun-bounce GI in SEUS Renewed and SEUS v11.
-			// TODO: This is very hacky, we need a better way to detect sun-bounce GI.
-			this.packHasIndirectSunBounceGi = fsh.contains("GI_QUALITY") && fsh.contains("GI_RENDER_RESOLUTION")
-					&& fsh.contains("GI_RADIUS")
-					&& fsh.contains("#define GI\t// Indirect lighting from sunlight.")
-					&& !fsh.contains("//#define GI\t// Indirect lighting from sunlight.")
-					&& !fsh.contains("// #define GI\t// Indirect lighting from sunlight.");
-		} else {
-			this.packHasIndirectSunBounceGi = false;
 		}
 
 		this.sunPathRotation = directives.getSunPathRotation();
@@ -289,17 +275,15 @@ public class ShadowRenderer implements ShadowMapRenderer {
 		// TODO: Cull entities / block entities with Advanced Frustum Culling even if voxelization is detected.
 		String distanceInfo;
 		String cullingInfo;
-		if ((packCullingState == OptionalBoolean.FALSE || packHasVoxelization || packHasIndirectSunBounceGi) && packCullingState != OptionalBoolean.TRUE) {
+		if ((packCullingState == OptionalBoolean.FALSE || packHasVoxelization) && packCullingState != OptionalBoolean.TRUE) {
 			double distance = halfPlaneLength * renderMultiplier;
 
 			String reason;
 
 			if (packCullingState == OptionalBoolean.FALSE) {
 				reason = "(set by shader pack)";
-			} else if (packHasVoxelization) {
+			} else /*if (packHasVoxelization)*/ {
 				reason = "(voxelization detected)";
-			} else {
-				reason = "(indirect sunlight GI detected)";
 			}
 
 			if (distance <= 0 || distance > Minecraft.getInstance().options.renderDistance * 16) {
@@ -562,7 +546,7 @@ public class ShadowRenderer implements ShadowMapRenderer {
 		Minecraft.getInstance().getMainRenderTarget().bindWrite(false);
 
 		// Restore the old viewport
-		RenderSystem.viewport(0, 0, client.getWindow().getWidth(), client.getWindow().getHeight());
+		RenderSystem.viewport(0, 0, client.getMainRenderTarget().width, client.getMainRenderTarget().height);
 
 		if (levelRenderer instanceof CullingDataCache) {
 			((CullingDataCache) levelRenderer).restoreState();
@@ -642,26 +626,25 @@ public class ShadowRenderer implements ShadowMapRenderer {
 
 		// Copy the content of the depth texture before rendering translucent content.
 		// This is needed for the shadowtex0 / shadowtex1 split.
-		targets.getFramebuffer().bindAsReadBuffer();
-		RenderSystem.activeTexture(GL20C.GL_TEXTURE0);
-		RenderSystem.bindTexture(targets.getDepthTextureNoTranslucents().getTextureId());
-		IrisRenderSystem.copyTexImage2D(GL20C.GL_TEXTURE_2D, 0, GL20C.GL_DEPTH_COMPONENT, 0, 0, resolution, resolution, 0);
-		RenderSystem.bindTexture(0);
+		// note: destFb is null since we never end up getting a strategy that requires the target framebuffer
+		// this is a bit of an assumption but it works for now
+		DepthCopyStrategy.fastest(false).copy(getRenderTargets().getFramebuffer(), getDepthTextureId(), null,
+			getDepthTextureNoTranslucentsId(), resolution, resolution);
 	}
 
 	@Override
 	public void addDebugText(List<String> messages) {
-		messages.add("[Iris] Shadow Maps: " + debugStringOverall);
-		messages.add("[Iris] Shadow Distance Terrain: " + terrainFrustumHolder.getDistanceInfo() + " Entity: " + entityFrustumHolder.getDistanceInfo());
-		messages.add("[Iris] Shadow Culling Terrain: " + terrainFrustumHolder.getCullingInfo() + " Entity: " + entityFrustumHolder.getCullingInfo());
-		messages.add("[Iris] Shadow Terrain: " + debugStringTerrain
+		messages.add("[" + Iris.MODNAME + "] Shadow Maps: " + debugStringOverall);
+		messages.add("[" + Iris.MODNAME + "] Shadow Distance Terrain: " + terrainFrustumHolder.getDistanceInfo() + " Entity: " + entityFrustumHolder.getDistanceInfo());
+		messages.add("[" + Iris.MODNAME + "] Shadow Culling Terrain: " + terrainFrustumHolder.getCullingInfo() + " Entity: " + entityFrustumHolder.getCullingInfo());
+		messages.add("[" + Iris.MODNAME + "] Shadow Terrain: " + debugStringTerrain
 				+ (shouldRenderTerrain ? "" : " (no terrain) ") + (shouldRenderTranslucent ? "" : "(no translucent)"));
-		messages.add("[Iris] Shadow Entities: " + getEntitiesDebugString());
-		messages.add("[Iris] Shadow Block Entities: " + getBlockEntitiesDebugString());
+		messages.add("[" + Iris.MODNAME + "] Shadow Entities: " + getEntitiesDebugString());
+		messages.add("[" + Iris.MODNAME + "] Shadow Block Entities: " + getBlockEntitiesDebugString());
 
 		if (buffers instanceof DrawCallTrackingRenderBuffers && shouldRenderEntities) {
 			DrawCallTrackingRenderBuffers drawCallTracker = (DrawCallTrackingRenderBuffers) buffers;
-			messages.add("[Iris] Shadow Entity Batching: " + BatchingDebugMessageHelper.getDebugMessage(drawCallTracker));
+			messages.add("[" + Iris.MODNAME + "] Shadow Entity Batching: " + BatchingDebugMessageHelper.getDebugMessage(drawCallTracker));
 		}
 	}
 
